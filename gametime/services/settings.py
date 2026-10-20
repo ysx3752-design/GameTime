@@ -21,6 +21,7 @@ class SettingsStore:
         "close_to_tray": "1",
         "notify_game_started": "0",
         "launch_minimized": "0",
+        "theme_mode": "dark",
         "last_seen_version": "",
     }
 

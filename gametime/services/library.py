@@ -123,6 +123,36 @@ class GameService:
         game = self.get_game(game_id)
         return self.update_game(game_id, game.name, new_exe_path, game.notes)
 
+    def repair_icons(self) -> int:
+        """一次性修复旧缓存图标：去掉透明留白，并从 exe 重新提取真实图标。
+
+        仅处理已有记录，不会改变游戏、会话或卸载后的历史。
+        """
+        repaired = 0
+        now = int(time.time())
+        for summary in self.list_games():
+            game = summary.game
+            if game.icon_file:
+                self.icons.normalize_cached_icon(game.icon_file)
+            if not Path(game.exe_path).is_file():
+                continue
+            new_icon = self.icons.create_cached_icon(game.exe_path, game.name, game.accent)
+            if not new_icon:
+                continue
+            self.db.update_game(
+                game.id,
+                name=game.name,
+                exe_path=game.exe_path,
+                exe_name=game.exe_name,
+                icon_file=new_icon,
+                notes=game.notes,
+                now=now,
+            )
+            if game.icon_file != new_icon:
+                self.icons.delete_cached_icon(game.icon_file)
+            repaired += 1
+        return repaired
+
     # ------------------------------------------------------------------ reads
     def get_game(self, game_id: int) -> Game:
         game = self.db.get_game(game_id)

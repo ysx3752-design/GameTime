@@ -10,10 +10,12 @@ from gametime.services.icons import IconService
 from gametime.services.launcher import GameLauncher
 from gametime.services.library import GameService
 from gametime.services.processes import FakeProcessScanner
+from gametime.services.scanner import ScanResult
 from gametime.services.settings import AutostartManager, SettingsStore
 from gametime.services.stats import StatsService
 from gametime.services.tracking import TrackingEngine
 from gametime.ui.dialogs import AddGameDialog, GameDetailDialog
+from gametime.ui.dialogs_scan import ScanGamesDialog
 from gametime.ui.main_window import MainWindow
 
 
@@ -254,6 +256,43 @@ def test_settings_persist(qapp, window, services) -> None:
     window.settings_page.notify_toggle.switch.setChecked(True)
     qapp.processEvents()
     assert services["settings"].get_bool("notify_game_started", False) is True
+
+
+def test_library_has_manual_and_scan_actions(qapp, window, services) -> None:
+    window._navigate(1)
+    assert window.library_page.scanRequested is not None
+    window._navigate(0)
+    assert window.dashboard.scanRequested is not None
+
+
+def test_scan_dialog_can_add_selected_candidate(qapp, window, services, exe_factory) -> None:
+    exe = exe_factory("scanned-game.exe")
+    dialog = ScanGamesDialog(
+        services["library"],
+        parent=window,
+        auto_start=False,
+        initial_results=[
+            ScanResult(
+                exe_path=str(exe),
+                display_name="扫描游戏",
+                folder_name="扫描游戏",
+                source="Steam",
+                size_bytes=1_200_000,
+            )
+        ],
+    )
+    dialog.show()
+    qapp.processEvents()
+    assert dialog.full_scan_button.isChecked() is True
+    assert len(dialog._rows) == 1
+    assert dialog.add_button.isEnabled() is True
+    dialog._add_selected()
+    qapp.processEvents()
+    assert dialog.added_count == 1
+    assert any(item.game.name == "扫描游戏" for item in services["library"].list_games())
+    dialog.close()
+    dialog.deleteLater()
+    qapp.processEvents()
 
 
 def test_game_card_quick_action_launch_missing_opens_detail(

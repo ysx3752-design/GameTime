@@ -313,7 +313,7 @@ def build_document() -> Document:
     doc.core_properties.subject = "Windows 桌面游戏时长记录器"
     doc.core_properties.author = "GameTime"
     doc.core_properties.keywords = "游戏时长, 桌面助手, PySide6, Qt, Windows"
-    doc.core_properties.comments = "版本 1.0.0 · 2026-10-20"
+    doc.core_properties.comments = "版本 1.1.2 · 2026-10-20"
 
     # 默认样式
     normal = doc.styles["Normal"]
@@ -389,7 +389,7 @@ def build_document() -> Document:
     set_run_font(run, FONT_CN, 24, True, INK)
     p = doc.add_paragraph()
     p.paragraph_format.space_after = Pt(14)
-    run = p.add_run("游时 GameTime · 桌面游戏时长记录器 · v1.0.0")
+    run = p.add_run("游时 GameTime · 桌面游戏时长记录器 · v1.1.2")
     set_run_font(run, FONT_EN, 10.5, False, MUTED)
     add_bottom_border(p, "DCD7F5", 8, 8)
 
@@ -398,7 +398,7 @@ def build_document() -> Document:
         ["项目", "内容"],
         [
             ["产品名称", "游时 GameTime"],
-            ["版本", "1.0.0"],
+            ["版本", "1.1.2"],
             ["平台", "Windows 10 / 11 x64"],
             ["产品形态", "绿色便携版（无需安装）"],
             ["技术栈", "Python 3.14.3 · PySide6 / Qt 6.12 · SQLite · psutil · PyInstaller 6.20"],
@@ -418,7 +418,7 @@ def build_document() -> Document:
 
     sub_heading(doc, "阅读指南")
     bullet(doc, "想快速上手：阅读第 3 章「使用说明」。", bold_prefix="普通用户：")
-    bullet(doc, "想了解“为什么不会出现未知游戏”：阅读 2.7 与 5.4。", bold_prefix="验收人员：")
+    bullet(doc, "想了解“为什么不会出现未知游戏”：阅读 2.7 与 5.6。", bold_prefix="验收人员：")
     bullet(doc, "想了解技术选型与架构：阅读第 4、5 章。", bold_prefix="开发 / 维护者：")
     bullet(doc, "测试结果与复现命令：阅读第 6 章，完整明细见 docs/测试报告.md。", bold_prefix="测试人员：")
 
@@ -461,18 +461,19 @@ def build_document() -> Document:
     section_heading(doc, "产品概览", "01")
     body_paragraph(
         doc,
-        "游时是一款本地优先的 Windows 桌面游戏助手，专注记录非 Steam / Epic 游戏的游玩时长。"
-        "它不试图取代游戏平台，也不做自动发现：用户手动添加哪一款游戏，它才记录哪一款。"
-        "这种克制的边界，让数据准确、界面简单，也让卸载后的历史处理更可控。",
+        "游时是一款本地优先的 Windows 桌面游戏助手，专注记录游戏库中的桌面游戏时长。"
+        "你可以手动选择游戏 exe，也可以扫描 Steam、Epic 与常见 Games 目录，确认候选后再加入。"
+        "扫描不会静默把结果塞进库，这种边界让数据准确、界面简单，也让卸载后的历史处理更可控。",
     )
     sub_heading(doc, "1.1 设计原则")
     make_table(
         doc,
         ["原则", "落地方式"],
         [
-            ["手动添加，不做游戏发现", "游戏库只包含用户主动添加的条目；进程扫描只用于判断已知 exe 是否运行"],
+            ["添加可控", "手动选择，或扫描后勾选确认；绝不静默加入未确认候选"],
             ["记录准确", "2 秒轮询、进程退出即结束、10 秒心跳、睡眠大间隔最多计 5 秒"],
             ["卸载不丢记录", "添加时永久缓存名称和图标；exe 消失后保留历史，可重新定位"],
+            ["外观可适应", "深色 / 浅色 / 跟随系统，切换即时生效"],
             ["本地优先", "SQLite + 本地图标；无账号、无云端、无网络请求"],
             ["克制、不打扰", "关闭窗口进入托盘继续计时；通知默认关闭"],
         ],
@@ -485,14 +486,28 @@ def build_document() -> Document:
 
     # 2 功能
     section_heading(doc, "功能清单", "02")
-    sub_heading(doc, "2.1 手动添加")
+    sub_heading(doc, "2.1 两种添加方式")
     body_paragraph(
         doc,
-        "在「添加游戏」中选择游戏的 .exe。游时会读取文件版本信息中的产品名作为默认名称，"
-        "并从 exe 中提取图标永久缓存；提取失败时，用游戏名首字和品牌色生成封面。"
-        "同一路径只能添加一次，路径校验在保存时进行。",
+        "方式 A：手动添加。在「添加游戏」中选择游戏的 .exe，游时读取版本信息中的产品名作为默认名称，"
+        "并从 exe 提取图标永久缓存；提取失败时生成品牌色字母封面。同一路径只能添加一次。",
     )
     image(doc, "06-add-game.png", "图 2  添加游戏：名称、程序路径、备注与图标预览", 14.6)
+    body_paragraph(
+        doc,
+        "方式 B：自动扫描后确认。从「游戏库」或「概览」点击「扫描游戏」，读取 Steam libraryfolders/appmanifest、"
+        "Epic manifest、常见 Games 文件夹、用户添加的自定义目录，并默认全盘扫描所有本地固定磁盘。"
+        "全盘扫描会跳过系统与缓存目录，按名称、层级、文件大小评分挑选候选，并过滤安装器、运行库、"
+        "平台启动器和已知工具；结果必须勾选确认后才写入游戏库。",
+    )
+    body_paragraph(
+        doc,
+        "实际例子：自定义安装的《以闪亮之名》位于 D:\\APP2\\Yslzm\\...，快速扫描不会发现；"
+        "全盘扫描可找到 Azure-Win64-Shipping.exe，并结合注册表名称显示为「以闪亮之名」。"
+        "全盘扫描默认开启，取消勾选可只做快速扫描。",
+        color=MUTED,
+    )
+    image(doc, "11-scan-games.png", "图 3  扫描游戏：来源、候选、已添加状态与确认添加", 15.8)
 
     sub_heading(doc, "2.2 双轨计时")
     make_table(
@@ -518,7 +533,7 @@ def build_document() -> Document:
         "按最近游玩、游玩时长、名称排序。绿色「计时中」代表正在记录；「文件缺失」代表 exe 不在了，"
         "但历史仍保留。",
     )
-    image(doc, "02-library.png", "图 3  游戏库：搜索、排序、计时中卡片与文件缺失卡片")
+    image(doc, "02-library.png", "图 4  游戏库：搜索、排序、计时中卡片与文件缺失卡片")
 
     sub_heading(doc, "2.4 游戏详情与历史")
     body_paragraph(
@@ -526,7 +541,7 @@ def build_document() -> Document:
         "详情页集中展示该游戏的总时长、对局数、近 7 天、上次游玩、近 7 天柱状图与最近会话。"
         "同时提供启动、手动计时、编辑、移除与重新定位。关闭详情不会停止计时。",
     )
-    image(doc, "05-game-detail.png", "图 4  详情：总时长、周趋势、会话历史与手动计时", 14.8)
+    image(doc, "05-game-detail.png", "图 5  详情：总时长、周趋势、会话历史与手动计时", 14.8)
 
     sub_heading(doc, "2.5 统计")
     body_paragraph(
@@ -534,16 +549,22 @@ def build_document() -> Document:
         "统计页展示今日、近 7 天、累计时长，近 14 天按自然日的柱状图，以及游戏排行 Top 5。"
         "跨午夜的会话会按时长比例拆分到两个自然日；电脑睡眠的时间不计入游玩时长。",
     )
-    image(doc, "03-stats.png", "图 5  统计：今日 / 近 7 天 / 累计、14 天趋势与排行")
+    image(doc, "03-stats.png", "图 6  统计：今日 / 近 7 天 / 累计、14 天趋势与排行")
 
-    sub_heading(doc, "2.6 托盘、设置与导出")
+    sub_heading(doc, "2.6 主题、托盘与设置")
+    body_paragraph(
+        doc,
+        "设置页提供深色、浅色、跟随系统三种主题。切换会立即更新 QSS、QPalette、原生标题栏、"
+        "图表、开关、卡片和图标颜色，并重建主窗口内容；当前页面与计时服务保持不变。"
+        "跟随系统每 3 秒读取一次 Windows 个性化设置。",
+    )
+    image(doc, "10-settings-light.png", "图 7  浅色主题与设置：主题选择器、托盘、通知、数据", 16.2)
     body_paragraph(
         doc,
         "关闭主窗口默认隐藏到托盘，计时继续；托盘菜单可打开主界面、查看计时状态或退出。"
-        "设置页提供关闭到托盘、开机自启、启动时最小化、计时通知、打开数据目录与 CSV 导出。"
+        "设置还提供关闭到托盘、开机自启、启动时最小化、计时通知、打开数据目录与 CSV 导出。"
         "开机自启只写当前用户注册表，不需要管理员权限。",
     )
-    image(doc, "04-settings.png", "图 6  设置：托盘、开机自启、通知、数据与关于")
 
     sub_heading(doc, "2.7 卸载后的行为（重点）")
     body_paragraph(
@@ -560,7 +581,7 @@ def build_document() -> Document:
         ("由用户决定删除：", "只有主动「移除」并确认后，才删除条目及其历史。"),
     ]:
         bullet(doc, text, bold_prefix=prefix)
-    image(doc, "07-missing-game.png", "图 7  卸载后的游戏：保留名称、缓存图标与历史，只显示「文件缺失」", 14.8)
+    image(doc, "07-missing-game.png", "图 8  卸载后的游戏：保留名称、缓存图标与历史，只显示「文件缺失」", 14.8)
 
     # 3 使用说明
     section_heading(doc, "使用说明", "03")
@@ -569,7 +590,7 @@ def build_document() -> Document:
         [
             "解压便携包到任意有写权限的目录，保留 _internal 文件夹。",
             "双击 GameTime.exe。",
-            "点击右上角「添加游戏」，选择游戏的启动程序 .exe。",
+            "点击「添加游戏」手动选择 exe，或点击「扫描游戏」从候选里勾选。",
             "正常启动游戏，或从卡片上的播放按钮启动。",
             "游戏进程出现后自动计时，退出后自动保存。",
         ],
@@ -582,6 +603,14 @@ def build_document() -> Document:
         set_run_font(run, FONT_EN, 11, True, RGBColor(124, 92, 255))
         run = p.add_run(text)
         set_run_font(run, FONT_CN, 10.5, False, INK)
+
+    micro_heading(doc, "扫描添加")
+    body_paragraph(
+        doc,
+        "点击「扫描游戏」后，后台线程读取 Steam、Epic 与常见 Games 目录，结果会显示名称、路径、来源和"
+        "“已添加”状态。默认全盘扫描所有本地磁盘，可发现 D:\\APP2 等自定义目录；"
+        "可点击「添加文件夹…」补充目录，勾选候选并确认后才写入游戏库。",
+    )
 
     micro_heading(doc, "数据目录")
     code_block(
@@ -621,7 +650,12 @@ def build_document() -> Document:
     make_table(
         doc,
         ["快捷键", "功能"],
-        [["Ctrl + N", "添加游戏"], ["Ctrl + F", "进入游戏库并聚焦搜索"], ["Esc", "关闭当前游戏详情"]],
+        [
+            ["Ctrl + N", "添加游戏"],
+            ["Ctrl + Shift + S", "扫描游戏"],
+            ["Ctrl + F", "进入游戏库并聚焦搜索"],
+            ["Esc", "关闭当前游戏详情"],
+        ],
         [5.0, 11.5],
     )
     body_paragraph(
@@ -650,9 +684,10 @@ def build_document() -> Document:
 
     sub_heading(doc, "4.2 为什么选择 Python + PySide6")
     bullet(doc, "Qt Widgets 是原生 C++ 控件封装，托盘、文件选择器、高 DPI 行为与 Windows 一致，不套浏览器。", bold_prefix="原生体验：")
-    bullet(doc, "计时、SQLite、图标、进程、CSV 等核心逻辑用 Python 实现直接、可测试；服务层不依赖 GUI。", bold_prefix="开发效率：")
+    bullet(doc, "计时、SQLite、图标、进程、扫描、主题、CSV 等核心逻辑用 Python 实现直接、可测试。", bold_prefix="开发效率：")
     bullet(doc, "相比 Electron 省去 Chromium；便携目录约 121 MB，压缩包约 51 MB。", bold_prefix="运行开销：")
     bullet(doc, "QSystemTrayIcon、QProcess、QFileIconProvider、QLocalServer 等能力可直接使用。", bold_prefix="系统集成：")
+    bullet(doc, "QSS + QPalette + 自绘控件可完成完整深浅色主题，不需要 Web UI。", bold_prefix="主题能力：")
     bullet(doc, "PySide6 采用 LGPLv3，本项目动态链接 Qt 共享库，未修改 Qt 源码。", bold_prefix="许可：")
 
     sub_heading(doc, "4.3 备选方案对比")
@@ -678,7 +713,13 @@ def build_document() -> Document:
     )
 
     sub_heading(doc, "4.4 架构")
-    image(doc, "08-architecture.png", "图 8  架构：UI 层、服务层与持久化 / 系统层", 16.2)
+    image(doc, "08-architecture.png", "图 9  架构：UI 层、服务层与持久化 / 系统层", 16.2)
+    body_paragraph(
+        doc,
+        "图中的服务层为核心计时/存储链路；扫描线程（GameScanner / ScanThread）与主题管理（ThemeManager）"
+        "分别在 5.2、5.3 展开，二者都不会绕过“用户确认”和“游戏库”边界。",
+        color=MUTED,
+    )
 
     # 5 关键实现
     section_heading(doc, "关键实现", "05")
@@ -686,8 +727,8 @@ def build_document() -> Document:
     body_paragraph(
         doc,
         "ProcessScanner 每轮返回系统中所有可读进程的规范化 exe 路径集合。TrackingEngine 取游戏库中的所有游戏，"
-        "用游戏 exe 路径与进程集合求交集。没有目录扫描、没有进程名猜测、没有商店 API。"
-        "即使未知 exe 正在运行，也不会被加入游戏库。",
+        "用游戏 exe 路径与进程集合求交集。计时链路没有目录扫描、进程名猜测或商店 API；"
+        "扫描候选必须经用户确认后才会进入游戏库，因此未知 exe 即使正在运行也不会被计时。",
     )
     code_block(
         doc,
@@ -699,7 +740,30 @@ for game in games:
         start_or_keep_session(game)""",
     )
 
-    sub_heading(doc, "5.2 会话与时间精度")
+    sub_heading(doc, "5.2 自动扫描链路")
+    body_paragraph(
+        doc,
+        "点击「扫描游戏」后，后台线程读取 Steam、Epic、常见 Games 目录，并默认遍历所有本地固定磁盘。"
+        "全盘扫描会跳过 Windows、WinSxS、WindowsApps、包缓存与开发缓存，按路径特征、文件大小、目录层级评分，"
+        "过滤安装器、运行库、平台启动器、微端/网页客户端和已知工具。结果只作为候选返回，必须由用户勾选确认后才调用 "
+        "GameService.add_game() 写入游戏库。",
+    )
+    body_paragraph(
+        doc,
+        "平台清单通常准确；全盘/目录启发式仍可能把启动器或工具列为候选，因此界面会显示路径与来源，并强制确认。"
+        "全盘扫描本机约 10–25 秒，可取消勾选做快速扫描；关闭扫描对话框会中断后台线程，未确认的结果不会入库。",
+        color=MUTED,
+    )
+
+    sub_heading(doc, "5.3 主题管理")
+    body_paragraph(
+        doc,
+        "ui/theme.py 维护 COLORS_DARK / COLORS_LIGHT 两套调色板和完整 QSS。切换时更新全局 COLORS、"
+        "Qt QPalette 与样式表，重建主窗口内容并更新原生标题栏明暗。主窗口重建时保留当前页面、计时服务、"
+        "托盘和快捷键；“跟随系统”每 3 秒读取 AppsUseLightTheme，在无模态窗口时自动应用。",
+    )
+
+    sub_heading(doc, "5.4 会话与时间精度")
     code_block(
         doc,
         r"""idle ──进程出现 / 手动开始──> active
@@ -715,7 +779,7 @@ active ──进程退出 / 手动结束 / 应用退出──> completed
     bullet(doc, "每 10 秒写心跳，强制结束进程最多损失一个心跳周期，而不是把整段挂起时间算进去。", bold_prefix="崩溃恢复：")
     bullet(doc, "所有时间戳存 Unix 秒（UTC），显示时转换为本地时间。", bold_prefix="时区：")
 
-    sub_heading(doc, "5.3 统计与跨午夜")
+    sub_heading(doc, "5.5 统计与跨午夜")
     body_paragraph(
         doc,
         "统计按本地自然日聚合。对跨午夜会话，按墙钟区间重叠比例把时长拆分到两天；"
@@ -723,13 +787,18 @@ active ──进程退出 / 手动结束 / 应用退出──> completed
         "今日、近 7 天、近 14 天与排行都来自同一批会话数据。",
     )
 
-    sub_heading(doc, "5.4 卸载状态如何保证")
+    sub_heading(doc, "5.6 卸载状态如何保证")
     bullet(doc, "图标在添加时复制到 icons/，数据库只存相对文件名，读取时校验路径必须在 icons 目录内。", bold_prefix="图标：")
+    bullet(
+        doc,
+        "通过 Windows Shell 读取 exe 的真实图标，裁掉透明留白并归一化为 256×256；旧版小图标缓存会在升级后自动修复一次。",
+        bold_prefix="提取：",
+    )
     bullet(doc, "UI 不根据 exe 是否存在来决定显示“未知”，而是读取缓存的名称/图标，单独标记文件缺失。", bold_prefix="显示：")
     bullet(doc, "缓存也丢失时，立即用名称和强调色生成字母封面，仍然不是问号或未知图标。", bold_prefix="兜底：")
     bullet(doc, "只有用户确认移除才删除记录；卸载游戏本身不会触发数据库清理。", bold_prefix="历史：")
 
-    sub_heading(doc, "5.5 单实例与托盘")
+    sub_heading(doc, "5.7 单实例与托盘")
     body_paragraph(
         doc,
         "QLocalServer + QLocalSocket 实现单实例，服务名包含用户与数据目录哈希。第二个实例发送 show 后退出，"
@@ -737,7 +806,7 @@ active ──进程退出 / 手动结束 / 应用退出──> completed
         "避免应用“消失且无法找回”。托盘菜单对象由主窗口持有，防止 Python GC 导致菜单失效。",
     )
 
-    sub_heading(doc, "5.6 数据库结构")
+    sub_heading(doc, "5.8 数据库结构")
     code_block(
         doc,
         r"""games(id, name, exe_path UNIQUE NOCASE, exe_name, icon_file,
@@ -754,11 +823,11 @@ settings(key PRIMARY KEY, value)
     body_paragraph(
         doc,
         "测试在 Windows 11 x64、Python 3.14.3、PySide6 6.12.0 环境完成。"
-        "自动化覆盖数据层、游戏库、计时引擎、统计、UI 与真实进程；打包版另行执行 smoke test、"
-        "单实例、托盘与端到端自动计时。完整明细见 docs/测试报告.md。",
+        "自动化覆盖数据层、游戏库、计时引擎、扫描、主题、统计、UI 与真实进程；"
+        "打包版另行执行 smoke test、单实例、托盘与端到端自动计时。完整明细见 docs/测试报告.md。",
     )
     sub_heading(doc, "6.1 自动化测试")
-    callout(doc, "测试结果", "python -m pytest -q  →  45 passed in 5.15s。未发现阻断使用的缺陷。")
+    callout(doc, "测试结果", "python -m pytest -q  →  58 passed。未发现阻断使用的缺陷。")
     make_table(
         doc,
         ["测试文件", "数量", "覆盖内容"],
@@ -768,18 +837,20 @@ settings(key PRIMARY KEY, value)
             ["test_tracking.py", "9", "只追踪库内游戏、自动/手动、睡眠上限、心跳、冲突、恢复"],
             ["test_stats.py", "5", "今日/7 天/累计、跨午夜拆分、活动会话、空数据"],
             ["test_export_settings.py", "4", "CSV 编码字段、设置、自启命令"],
-            ["test_ui.py", "12", "导航、添加、卸载状态、手动计时、删除、统计、关闭到托盘"],
+            ["test_scanner.py", "8", "Steam/Epic 清单、全盘扫描、注册表命名、自定义目录、去重、过滤"],
+            ["test_theme.py", "3", "调色板、系统跟随、主窗口主题重建"],
+            ["test_ui.py", "14", "导航、添加、扫描确认、卸载状态、手动计时、删除、托盘"],
             ["test_process_integration.py", "1", "真实 ping.exe 进程识别、计时、退出、入库"],
-            ["合计", "45", ""],
+            ["合计", "58", ""],
         ],
         [5.3, 1.8, 9.3],
         font_size=8.9,
     )
     body_paragraph(
         doc,
-        "关键断言包括：删除 exe 后缓存图标仍在、详情所有文本不含“未知”、"
-        "模拟 3600 秒睡眠间隔只累计 5 秒、23:30–00:30 会话拆分为 1800+1800 秒、"
-        "真实进程生成的自动会话时长为 6 秒。",
+        "关键断言包括：卸载后详情所有文本不含“未知”、模拟 3600 秒睡眠间隔只累计 5 秒、"
+        "23:30–00:30 会话拆分为 1800+1800 秒、真实进程自动会话 6 秒、浅色主题重启后生效、"
+        "扫描结果必须确认才入库。",
         color=MUTED,
     )
 
@@ -790,8 +861,10 @@ settings(key PRIMARY KEY, value)
         [
             ["PyInstaller 打包 + smoke test", "通过，输出 JSON ok=true、theme_loaded=true"],
             ["演示数据加载", "通过，game_count=7、window_visible=true"],
+            ["主题启动", "保存浅色主题后重启，theme_effective=light"],
             ["正常启动", "进程 Responding=True，窗口标题正确，托盘可用"],
             ["单实例", "第二实例退出码 0；首实例窗口句柄由 0 变为有效值"],
+            ["扫描", "全盘扫描实机发现 8 个候选（含《以闪亮之名》），结果需勾选确认"],
             ["端到端自动计时", "active→completed，自动记录 6 秒，日志包含 started/stopped"],
             ["真实托盘 / 关闭到托盘 / 通知 API", "全部 PASS"],
             ["HKCU 开机自启", "写入、读取、删除、恢复全部 PASS"],
@@ -852,7 +925,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1""",
         doc,
         ["限制", "说明 / 应对"],
         [
+            ["扫描是启发式", "全盘扫描可能列出启动器/工具；默认只保留评分较高的候选，添加前核对"],
+            ["全盘扫描耗时", "需遍历所有本地磁盘，本机约 10–25 秒；可取消勾选改用快速扫描"],
             ["按 exe 完整路径匹配", "启动器拉起另一个 exe、管理员权限导致路径不可读时，请用手动计时"],
+            ["跟随系统延迟", "每 3 秒检测；读取失败回退深色，模态窗口期间延后应用"],
             ["非反作弊 / 非平台插件", "不注入游戏、不读取内存、不提供 overlay 或帧率"],
             ["睡眠上限", "超过 5 秒的轮询间隔不计入，避免把睡眠算成游玩"],
             ["异常退出", "最多损失一个 10 秒心跳周期"],
@@ -869,8 +945,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1""",
     body_paragraph(
         doc,
         "游时没有网络请求、账号、遥测或广告。数据只写入 %LOCALAPPDATA%\\GameTime。"
-        "日志只记录启动、计时事件与错误堆栈，不记录游戏文件内容。CSV 导出由用户主动触发。"
-        "卸载软件不会自动删除数据；彻底清除需手动删除该目录。",
+        "扫描只读取本机平台清单与目录，结果仅在本地展示、不上传；日志只记录启动、计时事件与错误堆栈，"
+        "不记录游戏文件内容。CSV 导出由用户主动触发。卸载软件不会自动删除数据；彻底清除需手动删除该目录。",
     )
 
     # 8 交付与声明
@@ -881,13 +957,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1""",
         ["路径", "说明"],
         [
             ["dist\\GameTime\\GameTime.exe", "可直接运行的便携版"],
-            ["dist\\GameTime-1.0.0-win64-portable.zip", "便携压缩包（推荐交付）"],
+            ["dist\\GameTime-1.1.2-win64-portable.zip", "便携压缩包（推荐交付）"],
             ["docs\\游时-说明文档.md / .docx / .pdf", "本说明文档"],
             ["docs\\测试报告.md", "测试明细与证据"],
             ["docs\\images\\", "真实界面截图与文档配图"],
-            ["gametime\\ / tests\\", "完整源码与 45 项测试"],
+            ["gametime\\ / tests\\", "完整源码与 58 项测试"],
             ["GameTime.spec / scripts\\build.ps1", "打包配置与构建脚本"],
             ["scripts\\verify_windows_features.py", "Windows 托盘 / 自启验证脚本"],
+            ["scripts\\verify_scan_runtime.py", "实机扫描线程验证脚本"],
         ],
         [7.2, 9.0],
         first_col_bold=True,
@@ -914,13 +991,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1""",
         color=MUTED,
     )
 
-    body_paragraph(
-        doc,
-        "游时只做一件事：把你手动选择的桌面游戏，安静、准确地记录下来。没有未知条目，没有云端，没有打扰。"
-        "希望它能成为你游戏生活里一个可靠的小工具。",
-        color=MUTED,
-    )
-
     return doc
 
 
@@ -937,7 +1007,7 @@ def main() -> int:
     combined = text + "\n" + table_text
     assert "游时 GameTime" in combined
     assert "测试报告" in combined
-    assert "45 passed" in combined
+    assert "58 passed" in combined
     print(f"Wrote {OUT} ({OUT.stat().st_size} bytes)")
     print(
         f"Paragraphs={len(reopened.paragraphs)}, Tables={len(reopened.tables)}, "

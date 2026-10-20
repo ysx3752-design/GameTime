@@ -28,7 +28,7 @@ from .services.settings import AutostartManager, SettingsStore
 from .services.stats import StatsService
 from .services.tracking import TrackingEngine
 from .ui.main_window import MainWindow
-from .ui.theme import build_stylesheet
+from .ui.theme import apply_theme, effective_theme
 from .windows import set_app_user_model_id
 
 log = logging.getLogger(__name__)
@@ -128,7 +128,7 @@ def _install_exception_hook(smoke_test: bool, paths: AppPaths) -> None:
     sys.excepthook = handle
 
 
-def _apply_app_style(app: QApplication) -> None:
+def _apply_app_style(app: QApplication, theme_mode: str = "dark") -> str:
     from PySide6.QtGui import QFontDatabase
 
     families = set(QFontDatabase.families())
@@ -136,7 +136,7 @@ def _apply_app_style(app: QApplication) -> None:
     font = QFont(family, 10)
     app.setFont(font)
     app.setStyle("Fusion")
-    app.setStyleSheet(build_stylesheet())
+    return apply_theme(app, theme_mode)
 
 
 def _write_smoke_output(path: str | None, payload: dict) -> None:
@@ -188,6 +188,8 @@ def main(argv: list[str] | None = None) -> int:
         library = GameService(db, icons)
         stats = StatsService(db)
         settings = SettingsStore(db)
+        theme_mode = settings.get("theme_mode", "dark")
+        _apply_app_style(app, theme_mode)
         if not args.smoke_test:
             try:
                 # 移动过便携目录后，自动修正开机自启的命令路径。
@@ -209,6 +211,17 @@ def main(argv: list[str] | None = None) -> int:
             start_timers=True,
         )
         app.aboutToQuit.connect(window.shutdown)
+        if settings.get("icon_repair_version", "0") != "2":
+            try:
+                repaired = library.repair_icons()
+                if repaired:
+                    log.info("已修复 %s 个游戏图标", repaired)
+                    window.dashboard.refresh()
+                    window.library_page.refresh()
+                    window.stats_page.refresh()
+                settings.set("icon_repair_version", "2")
+            except Exception:
+                log.warning("修复游戏图标失败", exc_info=True)
         if not args.smoke_test:
             server = _create_single_instance_server(_single_instance_name(paths), window)
 
@@ -229,6 +242,8 @@ def main(argv: list[str] | None = None) -> int:
                     "game_count": library.db.count_games(),
                     "window_visible": window.isVisible(),
                     "theme_loaded": bool(app.styleSheet()),
+                    "theme_mode": theme_mode,
+                    "theme_effective": effective_theme(),
                 },
             )
             log.info("SMOKE_TEST_OK")

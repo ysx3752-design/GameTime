@@ -21,10 +21,12 @@ from gametime.paths import AppPaths  # noqa: E402
 from gametime.services.icons import IconService  # noqa: E402
 from gametime.services.launcher import GameLauncher  # noqa: E402
 from gametime.services.library import GameService  # noqa: E402
+from gametime.services.scanner import ScanResult  # noqa: E402
 from gametime.services.settings import AutostartManager, SettingsStore  # noqa: E402
 from gametime.services.stats import StatsService  # noqa: E402
 from gametime.services.tracking import TrackingEngine  # noqa: E402
 from gametime.ui.dialogs import AddGameDialog, GameDetailDialog  # noqa: E402
+from gametime.ui.dialogs_scan import ScanGamesDialog  # noqa: E402
 from gametime.ui.main_window import MainWindow  # noqa: E402
 
 OUT = ROOT / "docs" / "images"
@@ -132,6 +134,75 @@ def main() -> int:
     settle(app, 400)
     grab(missing_detail, "07-missing-game.png")
     missing_detail.close()
+
+    window._apply_theme_mode("light", notify=False)
+    window._navigate(0)
+    window.dashboard.refresh()
+    window._hide_toast()
+    settle(app, 500)
+    grab(window, "09-dashboard-light.png")
+
+    window._navigate(3)
+    window._hide_toast()
+    settle(app, 300)
+    grab(window, "10-settings-light.png")
+
+    scan = ScanGamesDialog(
+        library,
+        parent=window,
+        auto_start=False,
+        initial_results=[
+            ScanResult(
+                exe_path=r"D:\APP2\Yslzm\LifeMakeoverGame_ob_zh_944\Azure\Binaries\Win64\Azure-Win64-Shipping.exe",
+                display_name="以闪亮之名",
+                folder_name="LifeMakeoverGame",
+                source="全盘扫描",
+                size_bytes=79_034_880,
+            ),
+            ScanResult(
+                exe_path=games["赛博朋克 2077"].game.exe_path,
+                display_name="赛博朋克 2077",
+                folder_name="Cyberpunk 2077",
+                source="Steam",
+                already_added=True,
+                size_bytes=72_000_000_000,
+            ),
+            ScanResult(
+                exe_path=games["艾尔登法环"].game.exe_path,
+                display_name="艾尔登法环",
+                folder_name="ELDEN RING",
+                source="Steam",
+                already_added=True,
+                size_bytes=49_000_000_000,
+            ),
+            ScanResult(
+                exe_path=str(GAME_ROOT / "game-new1" / "AuroraVale.exe"),
+                display_name="Aurora Vale",
+                folder_name="Aurora Vale",
+                source="Steam",
+                size_bytes=18_600_000_000,
+            ),
+            ScanResult(
+                exe_path=str(GAME_ROOT / "game-new2" / "NeonDrift.exe"),
+                display_name="Neon Drift",
+                folder_name="Neon Drift",
+                source="Epic",
+                size_bytes=31_200_000_000,
+            ),
+            ScanResult(
+                exe_path=str(GAME_ROOT / "game-new3" / "PaperMoon.exe"),
+                display_name="Paper Moon",
+                folder_name="Paper Moon",
+                source="自定义文件夹",
+                size_bytes=4_800_000_000,
+            ),
+        ],
+    )
+    scan.show()
+    scan.raise_()
+    settle(app, 400)
+    grab(scan, "11-scan-games.png")
+    scan.close()
     window.hide()
     tracker.shutdown()
     if window.tray:

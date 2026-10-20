@@ -36,7 +36,7 @@ from .formatting import (
     format_last_played,
 )
 from .icons import icon, pixmap
-from .theme import COLORS
+from .theme import COLORS, is_dark_active, rgba
 from .widgets import BarChart, CardFrame, GameIcon, Separator, SessionRow, SmallButton, pill
 
 
@@ -66,6 +66,7 @@ class _PreviewIcon(QWidget):
             Qt.AspectRatioMode.KeepAspectRatioByExpanding,
             Qt.TransformationMode.SmoothTransformation,
         )
+        scaled.setDevicePixelRatio(1.0)
         painter.drawPixmap(0, 0, scaled)
         painter.end()
 
@@ -129,7 +130,7 @@ class AddGameDialog(QDialog):
         title = QLabel("编辑游戏" if self.game else "添加一款桌面游戏")
         title.setProperty("role", "h1")
         desc = QLabel(
-            "游时不会自动扫描硬盘里的游戏；只有你在这里手动添加的程序才会被统计。"
+            "手动选择游戏程序。也可以使用游戏库里的“扫描游戏”从常见平台和目录中寻找，扫描结果需确认后才会加入。"
         )
         desc.setProperty("role", "muted")
         desc.setWordWrap(True)
@@ -219,7 +220,7 @@ class AddGameDialog(QDialog):
 
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
-        apply_dark_title_bar(int(self.winId()))
+        apply_dark_title_bar(int(self.winId()), dark=is_dark_active())
 
     def _browse(self) -> None:
         start = self.path_edit.text().strip()
@@ -387,7 +388,8 @@ class GameDetailDialog(QDialog):
         # 缺失提示
         self.missing_banner = QFrame()
         self.missing_banner.setStyleSheet(
-            "background: #2E2517; border: 1px solid #4A3A21; border-radius: 12px;"
+            f"background: {COLORS['amber_soft']}; border: 1px solid {rgba(COLORS['amber'], 95)}; "
+            "border-radius: 12px;"
         )
         banner_layout = QHBoxLayout(self.missing_banner)
         banner_layout.setContentsMargins(14, 11, 14, 11)
@@ -398,14 +400,17 @@ class GameDetailDialog(QDialog):
         text = QLabel(
             "游戏程序已被移动或卸载。游时仍保留名称、图标和全部时长记录，不会用问号占位，也不会丢失历史。"
         )
-        text.setStyleSheet("color: #E9C37E; font-size: 12px; border: none; background: transparent;")
+        text.setStyleSheet(
+            f"color: {COLORS['amber']}; font-size: 12px; border: none; background: transparent;"
+        )
         text.setWordWrap(True)
         banner_layout.addWidget(text, 1)
         relocate = QPushButton("重新定位")
         relocate.setStyleSheet(
-            "QPushButton { background: #3C2F1C; border: 1px solid #5D4723; color: #F3C66D; "
+            f"QPushButton {{ background: {rgba(COLORS['amber'], 28)}; "
+            f"border: 1px solid {rgba(COLORS['amber'], 95)}; color: {COLORS['amber']}; "
             "border-radius: 8px; padding: 6px 11px; font-size: 11px; }"
-            "QPushButton:hover { background: #4A3A22; }"
+            f"QPushButton:hover {{ background: {rgba(COLORS['amber'], 48)}; }}"
         )
         relocate.setCursor(Qt.CursorShape.PointingHandCursor)
         relocate.clicked.connect(self._relocate)
@@ -530,7 +535,7 @@ class GameDetailDialog(QDialog):
 
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
-        apply_dark_title_bar(int(self.winId()))
+        apply_dark_title_bar(int(self.winId()), dark=is_dark_active())
 
     # ------------------------------------------------------------------- state
     def refresh(self) -> None:
@@ -773,4 +778,4 @@ class ConfirmDialog(QDialog):
 
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
-        apply_dark_title_bar(int(self.winId()))
+        apply_dark_title_bar(int(self.winId()), dark=is_dark_active())

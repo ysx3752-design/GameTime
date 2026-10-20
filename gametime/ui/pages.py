@@ -33,7 +33,7 @@ from .formatting import (
     greeting,
 )
 from .icons import icon, pixmap
-from .theme import COLORS
+from .theme import COLORS, THEME_LABELS, effective_theme, rgba, system_theme
 from .widgets import (
     BarChart,
     CardFrame,
@@ -46,6 +46,7 @@ from .widgets import (
     SmallButton,
     SoftComboBox,
     StatCard,
+    ThemeSelector,
     ToggleRow,
     pill,
 )
@@ -113,6 +114,7 @@ def _primary_button(text: str, icon_name: str = "plus") -> QPushButton:
 # ---------------------------------------------------------------------------
 class DashboardPage(ScrollPage):
     addRequested = Signal()
+    scanRequested = Signal()
     openGame = Signal(int)
     quickAction = Signal(int)
     showLibrary = Signal()
@@ -138,11 +140,15 @@ class DashboardPage(ScrollPage):
 
         add = _primary_button("添加游戏")
         add.clicked.connect(self.addRequested)
+        scan = SmallButton("扫描游戏", "scan", variant="ghost")
+        scan.setMinimumHeight(37)
+        scan.clicked.connect(self.scanRequested)
         actions = QWidget()
         actions_layout = QHBoxLayout(actions)
         actions_layout.setContentsMargins(0, 0, 0, 0)
         actions_layout.setSpacing(8)
         actions_layout.addWidget(self.refresh_button)
+        actions_layout.addWidget(scan)
         actions_layout.addWidget(add)
 
         self.header_holder = QWidget()
@@ -176,10 +182,12 @@ class DashboardPage(ScrollPage):
         hero_top = QHBoxLayout()
         hero_top.setSpacing(7)
         badge = QLabel()
-        badge.setPixmap(pixmap("spark", "#C4B5FF", 15))
+        badge.setPixmap(pixmap("spark", COLORS["accent"], 15))
         hero_top.addWidget(badge)
         today_title = QLabel("今日游玩")
-        today_title.setStyleSheet("color: #C8BFFF; font-size: 12px; font-weight: 600;")
+        today_title.setStyleSheet(
+            f"color: {COLORS['accent']}; font-size: 12px; font-weight: 600;"
+        )
         hero_top.addWidget(today_title)
         hero_top.addStretch(1)
         self.today_pill = pill("实时记录", "purple")
@@ -188,20 +196,22 @@ class DashboardPage(ScrollPage):
         self.today_value = QLabel("0 分钟")
         self.today_value.setStyleSheet(
             f"font-family: {QFont('Segoe UI Variable Display').family()}; "
-            "font-size: 33px; font-weight: 700; color: #F4F1FF; background: transparent;"
+            f"font-size: 33px; font-weight: 700; color: {COLORS['text']}; background: transparent;"
         )
         hero_text.addWidget(self.today_value)
         self.today_meta = QLabel("还没有开始今天的游戏")
-        self.today_meta.setStyleSheet("color: #9C93BE; font-size: 12px; background: transparent;")
+        self.today_meta.setStyleSheet(
+            f"color: {COLORS['muted']}; font-size: 12px; background: transparent;"
+        )
         hero_text.addWidget(self.today_meta)
         hero_layout.addLayout(hero_text, 1)
         self.hero_art = QLabel()
-        self.hero_art.setPixmap(pixmap("gamepad", "#6F5BD6", 70))
+        self.hero_art.setPixmap(pixmap("gamepad", COLORS["accent"], 70))
         self.hero_art.setFixedSize(84, 84)
         self.hero_art.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.hero_art.setStyleSheet(
-            "background: rgba(124, 92, 255, 34); border: 1px solid rgba(150, 125, 255, 38); "
-            "border-radius: 25px;"
+            f"background: {rgba(COLORS['accent'], 34)}; "
+            f"border: 1px solid {rgba(COLORS['accent'], 55)}; border-radius: 25px;"
         )
         hero_layout.addWidget(self.hero_art, 0, Qt.AlignmentFlag.AlignVCenter)
         summary_row.addWidget(hero, 3)
@@ -233,15 +243,21 @@ class DashboardPage(ScrollPage):
         self.live_dot.setStyleSheet(f"background: {COLORS['green']}; border-radius: 3px;")
         live_top.addWidget(self.live_dot)
         self.live_name = QLabel("")
-        self.live_name.setStyleSheet("font-size: 13px; font-weight: 600; background: transparent;")
+        self.live_name.setStyleSheet(
+            f"font-size: 13px; font-weight: 600; color: {COLORS['text']}; background: transparent;"
+        )
         live_top.addWidget(self.live_name)
         self.live_source = QLabel("")
-        self.live_source.setStyleSheet("color: #8FAEA4; font-size: 11px; background: transparent;")
+        self.live_source.setStyleSheet(
+            f"color: {COLORS['green']}; font-size: 11px; background: transparent;"
+        )
         live_top.addWidget(self.live_source)
         live_top.addStretch(1)
         live_text.addLayout(live_top)
         self.live_meta = QLabel("")
-        self.live_meta.setStyleSheet("color: #79958D; font-size: 11px; background: transparent;")
+        self.live_meta.setStyleSheet(
+            f"color: {COLORS['muted']}; font-size: 11px; background: transparent;"
+        )
         live_text.addWidget(self.live_meta)
         live_layout.addLayout(live_text, 1)
         self.live_elapsed = QLabel("00:00:00")
@@ -252,9 +268,10 @@ class DashboardPage(ScrollPage):
         live_layout.addWidget(self.live_elapsed)
         self.live_open = QPushButton("查看")
         self.live_open.setStyleSheet(
-            "QPushButton { background: #1D3D34; border: 1px solid #2E5E50; color: #8DE6C8; "
+            f"QPushButton {{ background: {COLORS['green_soft']}; "
+            f"border: 1px solid {rgba(COLORS['green'], 90)}; color: {COLORS['green']}; "
             "border-radius: 9px; padding: 7px 13px; font-size: 12px; }"
-            "QPushButton:hover { background: #265043; }"
+            f"QPushButton:hover {{ background: {rgba(COLORS['green'], 40)}; }}"
         )
         self.live_open.setCursor(Qt.CursorShape.PointingHandCursor)
         self.live_open.clicked.connect(self._open_live)
@@ -284,7 +301,7 @@ class DashboardPage(ScrollPage):
 
         self.empty = EmptyState(
             "把第一款桌面游戏收进来",
-            "点击“添加游戏”，选择游戏的 exe。游时只统计你手动添加的游戏，不扫描、不推测。",
+            "点击“添加游戏”选择 exe，或使用“扫描游戏”从常见游戏目录中挑选。游时只记录你确认加入的游戏。",
             "添加游戏",
             icon_name="gamepad",
         )
@@ -409,6 +426,7 @@ def _clock(seconds: int) -> str:
 # ---------------------------------------------------------------------------
 class LibraryPage(ScrollPage):
     addRequested = Signal()
+    scanRequested = Signal()
     openGame = Signal(int)
     quickAction = Signal(int)
 
@@ -427,8 +445,17 @@ class LibraryPage(ScrollPage):
     def _build(self) -> None:
         add = _primary_button("添加游戏")
         add.clicked.connect(self.addRequested)
+        scan = SmallButton("扫描游戏", "scan", variant="soft")
+        scan.setMinimumHeight(37)
+        scan.clicked.connect(self.scanRequested)
+        actions = QWidget()
+        actions_layout = QHBoxLayout(actions)
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.setSpacing(8)
+        actions_layout.addWidget(scan)
+        actions_layout.addWidget(add)
         self.content.addWidget(
-            _page_header("游戏库", "这里只会有你手动添加的游戏，不扫描硬盘，也没有自动识别条目。", add)
+            _page_header("游戏库", "手动添加或扫描后确认加入；只有库中的游戏会被计时。", actions)
         )
 
         controls = QHBoxLayout()
@@ -460,7 +487,7 @@ class LibraryPage(ScrollPage):
 
         self.empty = EmptyState(
             "游戏库还是空的",
-            "添加游戏后，游时会在你启动它时自动计时；卸载后也会保留名称、图标与历史。",
+            "手动添加，或扫描 Steam / Epic / 常见 Games 目录后确认加入。卸载后也会保留名称、图标与历史。",
             "添加第一款游戏",
         )
         self.empty.button.clicked.connect(self.addRequested)
@@ -612,7 +639,7 @@ class StatsPage(ScrollPage):
             rank = QLabel(str(index + 1))
             rank.setFixedWidth(18)
             rank.setStyleSheet(
-                f"color: {'#B9A8FF' if index == 0 else COLORS['faint']}; "
+                f"color: {COLORS['accent'] if index == 0 else COLORS['faint']}; "
                 "font-size: 11px; font-weight: 700;"
             )
             top.addWidget(rank)
@@ -641,6 +668,7 @@ class StatsPage(ScrollPage):
 class SettingsPage(ScrollPage):
     exportRequested = Signal()
     openDataRequested = Signal()
+    themeChangeRequested = Signal(str)
 
     def __init__(self, settings: SettingsStore, paths: AppPaths, autostart: AutostartManager) -> None:
         super().__init__()
@@ -666,8 +694,17 @@ class SettingsPage(ScrollPage):
 
     def _build(self) -> None:
         self.content.addWidget(
-            _page_header("设置", "调整游时的启动方式与数据管理。所有设置立即生效。")
+            _page_header("设置", "调整游时的外观、启动方式与数据管理。所有设置立即生效。")
         )
+
+        appearance_card, appearance_layout = self._section("外观")
+        self.theme_selector = ThemeSelector(self.settings.get("theme_mode", "dark"))
+        self.theme_selector.changed.connect(self.themeChangeRequested)
+        appearance_layout.addWidget(self.theme_selector)
+        self.theme_status = QLabel("")
+        self.theme_status.setProperty("role", "faint")
+        appearance_layout.addWidget(self.theme_status)
+        self.content.addWidget(appearance_card)
 
         launch_card, launch_layout = self._section("启动与托盘")
         self.close_toggle = ToggleRow(
@@ -765,9 +802,9 @@ class SettingsPage(ScrollPage):
         logo_row = QHBoxLayout()
         logo = QLabel()
         logo.setFixedSize(42, 42)
-        logo.setPixmap(pixmap("gamepad", "#B9A8FF", 24))
+        logo.setPixmap(pixmap("gamepad", COLORS["accent"], 24))
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo.setStyleSheet("background: #221D3E; border-radius: 12px;")
+        logo.setStyleSheet(f"background: {COLORS['accent_soft']}; border-radius: 12px;")
         logo_row.addWidget(logo)
         about_text = QVBoxLayout()
         about_text.setSpacing(1)
@@ -795,6 +832,14 @@ class SettingsPage(ScrollPage):
         self.content.addStretch(1)
 
     def refresh(self) -> None:
+        mode = self.settings.get("theme_mode", "dark")
+        self.theme_selector.set_current(mode)
+        if mode == "system":
+            self.theme_status.setText(
+                f"当前跟随系统：{THEME_LABELS[system_theme()]}（实际显示为{THEME_LABELS[effective_theme()]}）"
+            )
+        else:
+            self.theme_status.setText(f"当前：{THEME_LABELS.get(effective_theme(), '深色')}")
         self.close_toggle.switch.setChecked(self.settings.get_bool("close_to_tray", True))
         self.notify_toggle.switch.setChecked(self.settings.get_bool("notify_game_started", False))
         self.minimized_toggle.switch.setChecked(self.settings.get_bool("launch_minimized", False))

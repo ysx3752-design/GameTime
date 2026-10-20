@@ -100,12 +100,12 @@ def set_app_user_model_id(app_id: str) -> None:
         pass
 
 
-def apply_dark_title_bar(hwnd: int) -> None:
-    """为原生标题栏启用深色模式（Windows 10 1809+）。"""
+def apply_dark_title_bar(hwnd: int, dark: bool = True) -> None:
+    """设置原生标题栏明暗（Windows 10 1809+）。"""
     if not IS_WINDOWS or not hwnd:
         return
     try:
-        value = ctypes.c_int(1)
+        value = ctypes.c_int(1 if dark else 0)
         # 20 = DWMWA_USE_IMMERSIVE_DARK_MODE (新版)，19 = 旧版编号
         ctypes.windll.dwmapi.DwmSetWindowAttribute(
             ctypes.c_void_p(hwnd), 20, ctypes.byref(value), ctypes.sizeof(value)

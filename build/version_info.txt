@@ -1,4 +1,4 @@
-# UTF-8
+﻿# UTF-8
 VSVersionInfo(
   ffi=FixedFileInfo(
     filevers=(1, 0, 0, 0),
@@ -18,12 +18,12 @@ VSVersionInfo(
           [
             StringStruct('CompanyName', 'GameTime'),
             StringStruct('FileDescription', '游时 · 桌面游戏时长记录器'),
-            StringStruct('FileVersion', '1.0.0'),
+            StringStruct('FileVersion', '1.1.2'),
             StringStruct('InternalName', 'GameTime'),
             StringStruct('LegalCopyright', 'Copyright © 2026 GameTime'),
             StringStruct('OriginalFilename', 'GameTime.exe'),
             StringStruct('ProductName', '游时 GameTime'),
-            StringStruct('ProductVersion', '1.0.0')
+            StringStruct('ProductVersion', '1.1.2')
           ]
         )
       ]

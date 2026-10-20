@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 <#
     Build the portable Windows x64 package for GameTime.
     Usage: powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
@@ -48,7 +48,7 @@ Copy-Item (Join-Path $Root "README.md") (Join-Path $Dist "README.md") -Force
 Copy-Item (Join-Path $Root "THIRD_PARTY_NOTICES.md") (Join-Path $Dist "THIRD_PARTY_NOTICES.md") -Force
 
 Write-Host "==> Creating portable ZIP" -ForegroundColor Cyan
-$Zip = Join-Path $Root "dist\GameTime-1.0.0-win64-portable.zip"
+$Zip = Join-Path $Root "dist\GameTime-1.1.2-win64-portable.zip"
 if (Test-Path $Zip) { Remove-Item -Force $Zip }
 Compress-Archive -Path (Join-Path $Root "dist\GameTime") -DestinationPath $Zip -CompressionLevel Optimal
 
@@ -59,12 +59,12 @@ $ZipHash = (Get-FileHash $Zip -Algorithm SHA256).Hash
 $ChecksumPath = Join-Path $Root "dist\SHA256SUMS.txt"
 @(
     "SHA256  GameTime.exe  $ExeHash",
-    "SHA256  GameTime-1.0.0-win64-portable.zip  $ZipHash"
+    "SHA256  GameTime-1.1.2-win64-portable.zip  $ZipHash"
 ) | Set-Content -Path $ChecksumPath -Encoding ASCII
 
 Write-Host ""
 Write-Host "Build complete" -ForegroundColor Green
 Write-Host "  EXE: dist\GameTime\GameTime.exe"
-Write-Host "  ZIP: dist\GameTime-1.0.0-win64-portable.zip ($($ZipMb) MB)"
+Write-Host "  ZIP: dist\GameTime-1.1.2-win64-portable.zip ($($ZipMb) MB)"
 Write-Host "  Folder size: $($TotalMb) MB"
 Write-Host "  SHA256: $ChecksumPath"

@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLa
 
 from ..windows import apply_dark_title_bar
 from .dialogs import ConfirmDialog
-from .theme import COLORS
+from .theme import COLORS, is_dark_active
 from .widgets import Separator
 
 
@@ -50,7 +50,7 @@ class MessageDialog(QDialog):
 
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
-        apply_dark_title_bar(int(self.winId()))
+        apply_dark_title_bar(int(self.winId()), dark=is_dark_active())
 
 
 def ask_confirm(

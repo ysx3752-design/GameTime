@@ -17,8 +17,13 @@ from gametime.app import _apply_app_style  # noqa: E402
 from gametime.database import Database  # noqa: E402
 from gametime.paths import AppPaths  # noqa: E402
 from gametime.services.icons import IconService  # noqa: E402
+from gametime.services.launcher import GameLauncher  # noqa: E402
 from gametime.services.library import GameService  # noqa: E402
 from gametime.services.processes import FakeProcessScanner  # noqa: E402
+from gametime.services.settings import AutostartManager, SettingsStore  # noqa: E402
+from gametime.services.stats import StatsService  # noqa: E402
+from gametime.services.tracking import TrackingEngine  # noqa: E402
+from gametime.ui.main_window import MainWindow  # noqa: E402
 
 
 class FakeClock:
@@ -43,6 +48,15 @@ def qapp():
         widget.close()
         widget.deleteLater()
     app.processEvents()
+
+
+@pytest.fixture(autouse=True)
+def reset_theme_after_test(qapp):
+    yield
+    from gametime.ui.theme import apply_theme, effective_theme
+
+    if effective_theme() != "dark":
+        apply_theme(qapp, "dark")
 
 
 @pytest.fixture
@@ -95,6 +109,47 @@ def exe_factory(tmp_path: Path):
 @pytest.fixture
 def sample_game(library: GameService, exe_factory):
     return library.add_game("测试游戏", str(exe_factory("sample.exe")), "备注")
+
+
+@pytest.fixture
+def services(paths: AppPaths, db: Database):
+    icons = IconService(paths.icons)
+    library = GameService(db, icons)
+    stats = StatsService(db)
+    scanner = FakeProcessScanner()
+    tracker = TrackingEngine(db, library, scanner)
+    settings = SettingsStore(db)
+    return {
+        "paths": paths,
+        "db": db,
+        "icons": icons,
+        "library": library,
+        "stats": stats,
+        "tracker": tracker,
+        "settings": settings,
+        "scanner": scanner,
+        "launcher": GameLauncher(),
+    }
+
+
+@pytest.fixture
+def window(qapp, services):
+    win = MainWindow(
+        paths=services["paths"],
+        db=services["db"],
+        library=services["library"],
+        stats=services["stats"],
+        tracker=services["tracker"],
+        settings=services["settings"],
+        autostart=AutostartManager,
+        launcher=services["launcher"],
+        start_timers=False,
+    )
+    yield win
+    win.hide()
+    win.shutdown()
+    win.deleteLater()
+    qapp.processEvents()
 
 
 @pytest.fixture(scope="session")

@@ -1,4 +1,4 @@
-"""生成说明文档用的封面与架构图。"""
+﻿"""生成说明文档用的封面与架构图。"""
 
 from __future__ import annotations
 
@@ -110,7 +110,7 @@ def make_cover() -> Image.Image:
     # 底部
     draw.line([(W * 0.12, H * 0.80), (W * 0.88, H * 0.80)], fill=(255, 255, 255, 22), width=1 * scale)
     meta_font = font(int(18 * scale))
-    center_text(int(H * 0.83), "版本 1.0.0   ·   Windows 10 / 11 x64   ·   2026", meta_font, (132, 141, 160))
+    center_text(int(H * 0.83), "版本 1.1.2   ·   Windows 10 / 11 x64   ·   2026", meta_font, (132, 141, 160))
     center_text(int(H * 0.88), "Python 3.14 · PySide6 / Qt 6.12 · SQLite", font(int(16 * scale)), (105, 114, 135))
     return image.resize((1240, 1754), Image.Resampling.LANCZOS)
 

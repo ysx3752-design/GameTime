@@ -29,6 +29,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QAbstractButton,
+    QButtonGroup,
     QComboBox,
     QFrame,
     QHBoxLayout,
@@ -44,7 +45,7 @@ from PySide6.QtWidgets import (
 from ..models import Game, GameSummary
 from .formatting import format_duration, format_last_played
 from .icons import icon, pixmap
-from .theme import COLORS
+from .theme import COLORS, rgba
 from ..services.icons import letter_pixmap
 
 
@@ -104,7 +105,8 @@ class SmallButton(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setMinimumHeight(34)
         if icon_name:
-            self.setIcon(icon(icon_name, "#DDE4F0" if variant == "soft" else "#FFFFFF", 16))
+            icon_color = "#FFFFFF" if variant in {"primary", "dangerSolid"} else COLORS["text_soft"]
+            self.setIcon(icon(icon_name, icon_color, 16))
             self.setIconSize(QSize(16, 16))
 
 
@@ -153,7 +155,7 @@ class NavButton(QPushButton):
         self._sync_icon(False)
 
     def _sync_icon(self, checked: bool) -> None:
-        color = "#B9A8FF" if checked else COLORS["muted"]
+        color = COLORS["accent"] if checked else COLORS["muted"]
         self.setIcon(icon(self._icon_name, color, 19))
 
 
@@ -193,17 +195,20 @@ class ToggleSwitch(QAbstractButton):
         track = QRectF(0, 2, 42, 20)
         if self.isChecked():
             gradient = QLinearGradient(track.topLeft(), track.topRight())
-            gradient.setColorAt(0, QColor("#6B57EB"))
-            gradient.setColorAt(1, QColor(COLORS["accent"]))
+            base = QColor(COLORS["accent"])
+            gradient.setColorAt(0, base.darker(112))
+            gradient.setColorAt(1, base.lighter(108))
             painter.setBrush(gradient)
             painter.setPen(Qt.PenStyle.NoPen)
         else:
-            painter.setBrush(QColor("#263246"))
-            painter.setPen(QPen(QColor("#34435C"), 1))
+            painter.setBrush(QColor(COLORS["surface_3"]))
+            painter.setPen(QPen(QColor(COLORS["border"]), 1))
         painter.drawRoundedRect(track, 10, 10)
         knob_x = 4 + self._offset * 20
-        painter.setPen(QPen(QColor(255, 255, 255, 34), 1))
-        painter.setBrush(QColor("#F6F8FC") if self.isChecked() else QColor("#9BA8BC"))
+        painter.setPen(QPen(QColor(255, 255, 255, 40), 1))
+        painter.setBrush(
+            QColor("#FFFFFF") if self.isChecked() else QColor(COLORS["muted"])
+        )
         painter.drawEllipse(QRectF(knob_x, 4, 16, 16))
         painter.end()
 
@@ -228,7 +233,7 @@ class ToggleRow(QWidget):
             badge.setFixedSize(34, 34)
             badge.setPixmap(pixmap(icon_name, COLORS["muted"], 17))
             badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            badge.setStyleSheet("background: #172032; border-radius: 9px;")
+            badge.setStyleSheet(f"background: {COLORS['surface_3']}; border-radius: 9px;")
             layout.addWidget(badge)
         text_layout = QVBoxLayout()
         text_layout.setContentsMargins(0, 0, 0, 0)
@@ -260,6 +265,72 @@ class SoftComboBox(QComboBox):
             arrow,
         )
         painter.end()
+
+
+class ThemeSelector(QWidget):
+    """深色 / 浅色 / 跟随系统 三选一。"""
+
+    changed = Signal(str)
+    OPTIONS = (
+        ("dark", "深色", "低光环境", "moon"),
+        ("light", "浅色", "明亮清晰", "sun"),
+        ("system", "跟随系统", "随 Windows 切换", "monitor"),
+    )
+
+    def __init__(self, current: str = "dark") -> None:
+        super().__init__()
+        self._current = current
+        self._buttons: dict[str, QPushButton] = {}
+        self._group = QButtonGroup(self)
+        self._group.setExclusive(True)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        for index, (mode, title, description, icon_name) in enumerate(self.OPTIONS):
+            button = QPushButton(f"{title}\n{description}")
+            button.setCheckable(True)
+            button.setProperty("themeChoice", "true")
+            button.setProperty("themeMode", mode)
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            button.setMinimumHeight(64)
+            button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            button.setIconSize(QSize(19, 19))
+            self._group.addButton(button, index)
+            self._buttons[mode] = button
+            button.toggled.connect(lambda checked, m=mode: self._sync_icon(m, checked))
+            layout.addWidget(button, 1)
+        self._group.idClicked.connect(self._on_clicked)
+        self.set_current(current)
+
+    def _on_clicked(self, index: int) -> None:
+        mode = self.OPTIONS[index][0]
+        self._current = mode
+        self._sync_all_icons()
+        self.changed.emit(mode)
+
+    def _sync_icon(self, mode: str, checked: bool) -> None:
+        button = self._buttons.get(mode)
+        if button is None:
+            return
+        icon_name = next(option[3] for option in self.OPTIONS if option[0] == mode)
+        button.setIcon(icon(icon_name, COLORS["accent"] if checked else COLORS["muted"], 19))
+
+    def _sync_all_icons(self) -> None:
+        for mode, button in self._buttons.items():
+            self._sync_icon(mode, button.isChecked())
+
+    def set_current(self, mode: str) -> None:
+        if mode not in self._buttons:
+            mode = "dark"
+        self._current = mode
+        for button_mode, button in self._buttons.items():
+            button.blockSignals(True)
+            button.setChecked(button_mode == mode)
+            button.blockSignals(False)
+        self._sync_all_icons()
+
+    def current_mode(self) -> str:
+        return self._current
 
 
 # --------------------------------------------------------------------------- icons
@@ -301,6 +372,7 @@ class GameIcon(QWidget):
             Qt.AspectRatioMode.KeepAspectRatioByExpanding,
             Qt.TransformationMode.SmoothTransformation,
         )
+        scaled.setDevicePixelRatio(1.0)
         x = (self._size - scaled.width()) / 2
         y = (self._size - scaled.height()) / 2
         painter.drawPixmap(QPointF(x, y), scaled)
@@ -414,7 +486,7 @@ class BarChart(QWidget):
             return
 
         # 横线
-        painter.setPen(QPen(QColor("#1D2738"), 1, Qt.PenStyle.DashLine))
+        painter.setPen(QPen(QColor(COLORS["border_soft"]), 1, Qt.PenStyle.DashLine))
         for step in range(1, 4):
             y = chart.bottom() - chart.height() * step / 4
             painter.drawLine(QPointF(chart.left(), y), QPointF(chart.right(), y))
@@ -429,7 +501,7 @@ class BarChart(QWidget):
             height = max(3.0, (chart.height() - 8) * ratio) if value else 2.5
             bar = QRectF(cx - bar_width / 2, chart.bottom() - height, bar_width, height)
             if index == self._hover:
-                top_color = QColor("#C0B3FF")
+                top_color = QColor(self._accent).lighter(138)
                 bottom_color = QColor(self._accent)
             elif index == count - 1:
                 top_color = QColor(self._accent).lighter(124)
@@ -443,7 +515,9 @@ class BarChart(QWidget):
             path = QPainterPath()
             path.addRoundedRect(bar, min(6.0, bar_width / 2), min(6.0, bar_width / 2))
             painter.fillPath(path, gradient)
-            painter.setPen(QColor("#7C879A") if index != count - 1 else QColor("#B9A8FF"))
+            painter.setPen(
+                QColor(COLORS["muted"]) if index != count - 1 else QColor(COLORS["accent"])
+            )
             painter.drawText(
                 QRectF(cx - slot / 2, chart.bottom() + 7, slot, 18),
                 Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
@@ -487,7 +561,7 @@ class RankBar(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#1C2638"))
+        painter.setBrush(QColor(COLORS["surface_3"]))
         painter.drawRoundedRect(QRectF(0, 1, self.width(), 4), 2, 2)
         if self._fraction > 0:
             gradient = QLinearGradient(0, 0, self.width(), 0)
@@ -521,7 +595,9 @@ class StatCard(CardFrame):
         badge.setFixedSize(28, 28)
         badge.setPixmap(pixmap(icon_name, accent, 15))
         badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        badge.setStyleSheet(f"background: {QColor(accent).darker(240).name()}; border-radius: 8px;")
+        badge.setStyleSheet(
+            f"background: {rgba(accent, 32)}; border-radius: 8px;"
+        )
         title_label = QLabel(title)
         title_label.setProperty("role", "muted")
         top.addWidget(badge)
@@ -733,7 +809,10 @@ class EmptyState(QWidget):
         circle.setFixedSize(58, 58)
         circle.setPixmap(pixmap(icon_name, COLORS["accent"], 27))
         circle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        circle.setStyleSheet("background: #1D1938; border: 1px solid #332B59; border-radius: 18px;")
+        circle.setStyleSheet(
+            f"background: {COLORS['accent_soft']}; "
+            f"border: 1px solid {rgba(COLORS['accent'], 55)}; border-radius: 18px;"
+        )
         layout.addWidget(circle, 0, Qt.AlignmentFlag.AlignHCenter)
         title_label = QLabel(title)
         title_label.setProperty("role", "h2")

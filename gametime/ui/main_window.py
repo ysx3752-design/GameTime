@@ -36,10 +36,19 @@ from ..services.tracking import SessionConflictError, TrackingEngine
 from ..windows import apply_dark_title_bar
 from .dialogs import AddGameDialog, GameDetailDialog
 from .dialogs_confirm import show_message
+from .dialogs_scan import ScanGamesDialog
 from .formatting import format_duration
 from .icons import pixmap
 from .pages import DashboardPage, LibraryPage, SettingsPage, StatsPage
-from .theme import COLORS
+from .theme import (
+    COLORS,
+    THEME_LABELS,
+    apply_theme,
+    effective_theme,
+    is_dark_active,
+    normalize_theme_mode,
+    system_theme,
+)
 from .widgets import NavButton
 
 log = logging.getLogger(__name__)
@@ -84,6 +93,7 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(app_icon)
         self.tracker.add_listener(self._on_tracking_event)
         self._build_ui()
+        self._setup_shortcuts()
         self._setup_tray()
         self._restore_geometry()
         self._center_if_needed()
@@ -97,6 +107,10 @@ class MainWindow(QMainWindow):
         self.stats_timer = QTimer(self)
         self.stats_timer.setInterval(15000)
         self.stats_timer.timeout.connect(self._periodic_refresh)
+        self.theme_timer = QTimer(self)
+        self.theme_timer.setInterval(3000)
+        self.theme_timer.timeout.connect(self._watch_system_theme)
+        self.theme_timer.start()
         if start_timers:
             self.start_timers()
 
@@ -176,7 +190,7 @@ class MainWindow(QMainWindow):
         live_header.setSpacing(6)
         self.sidebar_dot = QLabel()
         self.sidebar_dot.setFixedSize(7, 7)
-        self.sidebar_dot.setStyleSheet("background: #55627A; border-radius: 3px;")
+        self.sidebar_dot.setStyleSheet(f"background: {COLORS['faint']}; border-radius: 3px;")
         live_header.addWidget(self.sidebar_dot)
         live_title = QLabel("计时状态")
         live_title.setProperty("role", "faint")
@@ -184,7 +198,9 @@ class MainWindow(QMainWindow):
         live_header.addStretch(1)
         sidebar_live_layout.addLayout(live_header)
         self.sidebar_game = QLabel("待机中")
-        self.sidebar_game.setStyleSheet("font-size: 12px; font-weight: 600; color: #C8D1E2;")
+        self.sidebar_game.setStyleSheet(
+            f"font-size: 12px; font-weight: 600; color: {COLORS['text_soft']};"
+        )
         self.sidebar_game.setWordWrap(True)
         sidebar_live_layout.addWidget(self.sidebar_game)
         self.sidebar_time = QLabel("游戏启动后自动计时")
@@ -208,30 +224,38 @@ class MainWindow(QMainWindow):
         root.addWidget(self.stack, 1)
 
         self.dashboard.addRequested.connect(self._add_game)
+        self.dashboard.scanRequested.connect(self._scan_games)
         self.dashboard.openGame.connect(self.open_detail)
         self.dashboard.quickAction.connect(self._quick_action)
         self.dashboard.showLibrary.connect(lambda: self._navigate(1))
         self.library_page.addRequested.connect(self._add_game)
+        self.library_page.scanRequested.connect(self._scan_games)
         self.library_page.openGame.connect(self.open_detail)
         self.library_page.quickAction.connect(self._quick_action)
         self.stats_page.exportRequested.connect(self._export_csv)
         self.stats_page.openGame.connect(self.open_detail)
         self.settings_page.exportRequested.connect(self._export_csv)
         self.settings_page.openDataRequested.connect(self._open_data_dir)
-
-        QShortcut(QKeySequence("Ctrl+N"), self, activated=self._add_game)
-        QShortcut(QKeySequence("Ctrl+F"), self, activated=self._focus_search)
-        QShortcut(QKeySequence("Escape"), self, activated=self._hide_detail)
+        self.settings_page.themeChangeRequested.connect(self._request_theme_change)
 
         self._build_toast(central)
         self.dashboard.refresh()
+
+    def _setup_shortcuts(self) -> None:
+        self._shortcuts = [
+            QShortcut(QKeySequence("Ctrl+N"), self, activated=self._add_game),
+            QShortcut(QKeySequence("Ctrl+Shift+S"), self, activated=self._scan_games),
+            QShortcut(QKeySequence("Ctrl+F"), self, activated=self._focus_search),
+            QShortcut(QKeySequence("Escape"), self, activated=self._hide_detail),
+        ]
 
     def _build_toast(self, parent: QWidget) -> None:
         self.toast = QFrame(parent)
         self.toast.setObjectName("Toast")
         self.toast.setStyleSheet(
-            "QFrame#Toast { background: #1B2434; border: 1px solid #33425C; border-radius: 10px; }"
-            "QLabel { background: transparent; border: none; color: #E8EDF5; font-size: 12px; }"
+            f"QFrame#Toast {{ background: {COLORS['surface_2']}; "
+            f"border: 1px solid {COLORS['border']}; border-radius: 10px; }}"
+            f"QLabel {{ background: transparent; border: none; color: {COLORS['text']}; font-size: 12px; }}"
         )
         layout = QHBoxLayout(self.toast)
         layout.setContentsMargins(13, 8, 14, 8)
@@ -332,7 +356,7 @@ class MainWindow(QMainWindow):
     def _update_sidebar_live(self) -> None:
         runs = self.tracker.active_runs
         if not runs:
-            self.sidebar_dot.setStyleSheet("background: #55627A; border-radius: 3px;")
+            self.sidebar_dot.setStyleSheet(f"background: {COLORS['faint']}; border-radius: 3px;")
             self.sidebar_game.setText("待机中")
             self.sidebar_time.setText("游戏启动后自动计时")
             return
@@ -393,6 +417,54 @@ class MainWindow(QMainWindow):
         self._navigate(1)
         self.library_page.focus_search()
 
+    # ------------------------------------------------------------------- theme
+    def _request_theme_change(self, mode: str) -> None:
+        # 等按钮点击信号返回后再重建页面，避免删除仍在派发信号的控件。
+        QTimer.singleShot(0, lambda: self._apply_theme_mode(mode, notify=True))
+
+    def _apply_theme_mode(self, mode: str, *, notify: bool = False) -> None:
+        mode = normalize_theme_mode(mode)
+        app = QApplication.instance()
+        if app is None:
+            return
+        self.settings.set("theme_mode", mode)
+        effective = apply_theme(app, mode)
+        self._rebuild_ui_for_theme()
+        if notify:
+            label = THEME_LABELS.get(mode, "深色")
+            if mode == "system":
+                self._show_toast(f"主题已切换为跟随系统（{THEME_LABELS[effective]}）")
+            else:
+                self._show_toast(f"主题已切换为{label}")
+
+    def _watch_system_theme(self) -> None:
+        if self.settings.get("theme_mode", "dark") != "system":
+            return
+        if QApplication.activeModalWidget() is not None:
+            return
+        if self._detail is not None and self._detail.isVisible():
+            return
+        if system_theme() != effective_theme():
+            self._apply_theme_mode("system", notify=False)
+
+    def _rebuild_ui_for_theme(self) -> None:
+        index = self.stack.currentIndex() if hasattr(self, "stack") else 0
+        if self._detail is not None:
+            old_detail = self._detail
+            self._detail = None
+            self._detail_id = None
+            old_detail.close()
+            old_detail.deleteLater()
+        old_central = self.centralWidget()
+        if old_central is not None:
+            self.setCentralWidget(None)
+            old_central.deleteLater()
+        self._build_ui()
+        self._navigate(min(index, self.stack.count() - 1))
+        self._update_sidebar_live()
+        self._update_tray_tooltip()
+        self._apply_native_title_bar()
+
     # ----------------------------------------------------------------- actions
     def _add_game(self) -> None:
         dialog = AddGameDialog(self.library, self.library.icons, parent=self)
@@ -401,6 +473,15 @@ class MainWindow(QMainWindow):
             self.dashboard.refresh()
             self._show_toast(f"已添加《{dialog.saved_game.name}》")
             self._navigate(1)
+
+    def _scan_games(self) -> None:
+        dialog = ScanGamesDialog(self.library, parent=self)
+        dialog.exec()
+        if dialog.added_count:
+            self.dashboard.refresh()
+            self.library_page.refresh()
+            self._navigate(1)
+            self._show_toast(f"已从扫描结果添加 {dialog.added_count} 款游戏")
 
     def _quick_action(self, game_id: int) -> None:
         source = self.tracker.active_source(game_id)
@@ -573,15 +654,19 @@ class MainWindow(QMainWindow):
             pass
 
     # ------------------------------------------------------------------- window
+    def _apply_native_title_bar(self) -> None:
+        if self.isVisible():
+            apply_dark_title_bar(int(self.winId()), dark=is_dark_active())
+
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
-        apply_dark_title_bar(int(self.winId()))
+        self._apply_native_title_bar()
 
     def show_main(self) -> None:
         self.showNormal()
         self.raise_()
         self.activateWindow()
-        apply_dark_title_bar(int(self.winId()))
+        self._apply_native_title_bar()
 
     def hide_to_tray(self) -> None:
         if not self.tray:
@@ -621,7 +706,12 @@ class MainWindow(QMainWindow):
         if self._cleaned:
             return
         self._cleaned = True
-        for timer in (getattr(self, "poll_timer", None), getattr(self, "ui_timer", None), getattr(self, "stats_timer", None)):
+        for timer in (
+            getattr(self, "poll_timer", None),
+            getattr(self, "ui_timer", None),
+            getattr(self, "stats_timer", None),
+            getattr(self, "theme_timer", None),
+        ):
             if timer is not None:
                 timer.stop()
         try:
