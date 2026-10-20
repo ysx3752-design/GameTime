@@ -1,0 +1,4 @@
+2026-10-20 09:52:45 [INFO] gametime.app: 启动游时 1.0.0，数据目录 D:\Deepseek\GameTime\build\single-data
+2026-10-20 09:52:46 [INFO] gametime.app: 主窗口已就绪；单实例=True，托盘=True
+2026-10-20 09:52:49 [INFO] gametime.app: 启动游时 1.0.0，数据目录 D:\Deepseek\GameTime\build\single-data
+2026-10-20 09:52:50 [INFO] gametime.app: 检测到已运行的实例，已请求其显示主窗口

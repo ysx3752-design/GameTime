@@ -1,0 +1,4 @@
+2026-10-20 09:53:00 [INFO] gametime.app: 启动游时 1.0.0，数据目录 D:\Deepseek\GameTime\build\e2e-data
+2026-10-20 09:53:01 [INFO] gametime.app: 主窗口已就绪；单实例=True，托盘=True
+2026-10-20 09:53:01 [INFO] gametime.ui.main_window: 游戏事件 started: E2E 自动计时 (auto)
+2026-10-20 09:53:07 [INFO] gametime.ui.main_window: 游戏事件 stopped: E2E 自动计时 (auto)

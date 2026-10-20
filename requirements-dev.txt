@@ -1,0 +1,7 @@
+-r requirements.txt
+
+# 开发、测试与构建
+PyInstaller==6.20.0
+pytest==9.1.1
+ruff==0.14.3
+Pillow==12.1.1

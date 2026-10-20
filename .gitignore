@@ -1,0 +1,13 @@
+# 构建、缓存与本地数据
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.dsh-office-*/
+build/pyinstaller/
+build/smoke-*/
+build/demo-data/
+build/demo-games/
+build/smoke-result*.json
+dist/
+docs/~$*
